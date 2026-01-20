@@ -105,8 +105,6 @@ All shapefile components must reside in the same directory and share the same ba
 
 `latitude | longitude`
 
-No address, pincode, or administrative information is required.
-
 ---
 
 ## Output Format
@@ -123,13 +121,13 @@ Python 3.9 or higher is required.
 
 Install dependencies:
 
-`pip install geopandas shapely pyogrio rtree pandas openpyxl fiona`
+```pip install geopandas shapely pyogrio rtree pandas openpyxl fiona```
 
 ---
 
 ## How to Run
 
-`python main.py`
+```python main.py```
 
 The script prints structured progress messages and generates the output Excel file.
 
@@ -194,6 +192,30 @@ For very large datasets, chunked processing is recommended.
 
 ---
 
+## Common Mistakes and Errors
+
+- Columns not named `latitude` and `longitude`, i.e. they may be `LAT`, `LONG` or something similar.
+  this should be changed.
+
+- The latitudes and longitudes must not contain whitespaces in them, they must be purely numeric.
+
+- Shapefile components not kept together
+All shapefile components (`.shp`, `.shx`, `.dbf`, `.prj`, `.cpg`) must be present in the same directory and share the same base filename.  
+Missing or renamed components can cause layers to fail loading or produce incorrect results.
+
+- Missing or incorrect CRS information
+If the `.prj` file is missing or incorrect, spatial joins may silently return wrong results.  
+Always ensure the CRS is correctly defined before performing joins.
+
+- Performing nearest-neighbor joins in geographic CRS
+Using `sjoin_nearest` directly in EPSG:4326 (latitude/longitude) leads to incorrect distance calculations.  
+Nearest-neighbor operations must be performed in a projected CRS (e.g., EPSG:3857).
+
+- Points lying exactly on administrative boundaries
+Coordinates that fall exactly on polygon boundaries may return null or ambiguous results due to geometric precision limitations.
+
+---
+
 ## Licensing and Disclaimer
 
 This repository contains code only.
@@ -218,5 +240,4 @@ Government and PSU analytics
 ## Final Notes
 
 This project demonstrates a professional, API-free reverse geocoding workflow using official Indian government data.
-
 It is designed for correctness, transparency, and offline operation.
