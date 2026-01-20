@@ -1,21 +1,21 @@
-# Offline Reverse Geocoding for India  
+# Offline Reverse Geocoding for India
 ## Administrative Boundaries, Headquarters & PIN Codes (Fully Offline)
 
-This repository provides a **complete, production-grade, offline reverse geocoding pipeline for India**.  
-Given **only latitude and longitude**, the system derives multiple administrative attributes using **official Government of India GIS datasets**, without relying on any external APIs.
+This repository provides a complete, production-grade, offline reverse geocoding pipeline for India.
+Given only latitude and longitude, the system derives multiple administrative attributes using official Government of India GIS datasets, without relying on any external APIs.
 
 ---
 
 ## What This Project Does
 
-For each `(latitude, longitude)` pair, the pipeline determines:
+For each (latitude, longitude) pair, the pipeline determines:
 
-- State  
-- District  
-- Subdistrict / Taluk  
-- State Headquarters (Capital)  
-- District Headquarters  
-- PIN Code  
+- State
+- District
+- Subdistrict / Taluk
+- State Headquarters (Capital)
+- District Headquarters
+- PIN Code
 
 All outputs are generated locally using spatial joins on authoritative boundary datasets.
 
@@ -23,8 +23,8 @@ All outputs are generated locally using spatial joins on authoritative boundary 
 
 ## What This Project Does Not Do
 
-- No Google Maps, Mapbox, or other APIs  
-- No internet access required after data download  
+- No Google Maps, Mapbox, or other commercial APIs
+- No internet access required after data download
 
 This makes the project suitable for academic submissions, government workflows, restricted environments, and reproducible research.
 
@@ -35,7 +35,7 @@ This makes the project suitable for academic submissions, government workflows, 
 ### Administrative Boundaries and Headquarters
 
 Survey of India – Online Maps Portal  
-https://onlinemaps.surveyofindia.gov.in/Digital_Product_Show.aspx  
+https://onlinemaps.surveyofindia.gov.in/Digital_Product_Show.aspx
 
 Product details:
 
@@ -46,14 +46,14 @@ Scale: 1:1 Million
 Coverage: Entire India  
 Detail Level: Up to Taluk level with State and District HQ  
 
-This dataset provides state boundaries, district boundaries, subdistrict boundaries, and HQ point locations.
+This dataset provides state boundaries, district boundaries, subdistrict (taluk) boundaries, and headquarters point locations.
 
 ---
 
 ### PIN Code Boundaries
 
 Government of India Open Data Portal (data.gov.in)  
-https://www.data.gov.in/resource/delivery-post-office-pincode-boundary  
+https://www.data.gov.in/resource/delivery-post-office-pincode-boundary
 
 This dataset provides polygon boundaries for Indian PIN codes.
 
@@ -61,24 +61,51 @@ This dataset provides polygon boundaries for Indian PIN codes.
 
 ## Folder Structure
 
-offline-reverse-geocoding-india  
-├── database.xlsx  
-├── main.py  
-├── README.md  
-├── STATE_BOUNDARY.shp  
-├── DISTRICT_BOUNDARY.shp  
-├── SUBDISTRICT_BOUNDARY.shp  
-├── STATE_HQ.shp  
-├── DISTRICT_HQ.shp  
+```
+offline-reverse-geocoding-india/
+├── database.xlsx
+├── main.py
+├── README.md
+├── requirements.txt
+├── STATE_BOUNDARY.shp
+├── STATE_BOUNDARY.shx
+├── STATE_BOUNDARY.dbf
+├── STATE_BOUNDARY.prj
+├── STATE_BOUNDARY.cpg
+├── DISTRICT_BOUNDARY.shp
+├── DISTRICT_BOUNDARY.shx
+├── DISTRICT_BOUNDARY.dbf
+├── DISTRICT_BOUNDARY.prj
+├── DISTRICT_BOUNDARY.cpg
+├── SUBDISTRICT_BOUNDARY.shp
+├── SUBDISTRICT_BOUNDARY.shx
+├── SUBDISTRICT_BOUNDARY.dbf
+├── SUBDISTRICT_BOUNDARY.prj
+├── SUBDISTRICT_BOUNDARY.cpg
+├── STATE_HQ.shp
+├── STATE_HQ.shx
+├── STATE_HQ.dbf
+├── STATE_HQ.prj
+├── STATE_HQ.cpg
+├── DISTRICT_HQ.shp
+├── DISTRICT_HQ.shx
+├── DISTRICT_HQ.dbf
+├── DISTRICT_HQ.prj
+├── DISTRICT_HQ.cpg
 └── All_India_pincode_Boundary.geojson
+```
+
+All shapefile components must reside in the same directory and share the same base filename.
 
 ---
 
 ## Input Format
 
-database.xlsx must contain only:
+`database.xlsx` must contain only:
 
-`latitude` | `longitude`  
+`latitude | longitude`
+
+No address, pincode, or administrative information is required.
 
 ---
 
@@ -86,7 +113,7 @@ database.xlsx must contain only:
 
 reverse_geocoded_database.xlsx contains:
 
-`latitude | longitude | state | district | subdistrict | state_capital | district_hq | pincode` 
+`latitude | longitude | state | district | subdistrict | state_capital | district_hq | pincode`
 
 ---
 
@@ -104,33 +131,51 @@ Install dependencies:
 
 `python main.py`
 
-The script prints progress messages and generates the output Excel file.
+The script prints structured progress messages and generates the output Excel file.
 
 ---
 
 ## Spatial Logic Overview
 
-Two different spatial operations are used:
+Two types of spatial operations are used:
 
-Polygon containment is used for state, district, subdistrict, and pincode assignment.
+Polygon containment (within) is used for state, district, subdistrict, and pincode assignment.
 
-Nearest-neighbor distance calculations are used for state and district headquarters.
+Nearest-neighbor distance calculations (sjoin_nearest) are used for state and district headquarters.
 
 ---
 
 ## Why Two Coordinate Reference Systems Are Required
 
-Geographic CRS (EPSG:4326) uses degrees and is ideal for storing latitude and longitude and for topological operations such as polygon containment.
+This pipeline deliberately uses two different Coordinate Reference Systems (CRS).
+
+Geographic CRS (EPSG:4326) uses degrees and is suitable for storing latitude and longitude and for topological operations such as polygon containment.
 
 Projected CRS (EPSG:3857) uses meters and is required for accurate distance-based nearest-neighbor calculations.
 
-Distance calculations performed directly in EPSG:4326 are mathematically incorrect because degrees are not uniform distance units. Therefore, nearest-HQ joins are performed in a projected CRS and then reprojected back.
+Distance calculations performed directly in EPSG:4326 are mathematically incorrect because degrees are not uniform units of distance.
+Therefore, nearest-HQ joins are performed in a projected CRS and results are re-projected back to EPSG:4326.
+
+---
+
+## Shapefile Components and Their Roles
+
+A shapefile is a multi-file dataset. Although only the .shp file is referenced in code, multiple files work together.
+
+`.shp` stores geometry  
+`.dbf` stores attribute data  
+`.shx` provides geometry indexing  
+`.prj` defines the coordinate reference system  
+
+`.cpg` specifies the character encoding of the .dbf file.
+It does not affect geometry or spatial joins and is only required when non-ASCII text is present.
+It is commonly included as a best practice to ensure consistent text interpretation across platforms.
 
 ---
 
 ## Challenges and Design Considerations
 
-Managing multiple coordinate systems is essential to ensure correctness.
+Managing multiple coordinate systems is essential for correctness.
 
 Points lying exactly on administrative boundaries may not always produce deterministic results.
 
@@ -144,7 +189,8 @@ The pipeline prioritizes data correctness over forced matches.
 
 Spatial joins use R-tree spatial indexing.
 
-The pipeline scales well for thousands of points. For very large datasets, chunked processing is recommended.
+The pipeline scales well for thousands of points.
+For very large datasets, chunked processing is recommended.
 
 ---
 
@@ -165,7 +211,7 @@ Disaster management and planning
 Census and demographic analysis  
 Location intelligence pipelines  
 Academic theses and research  
-Government and PSU analytics  
+Government and PSU analytics
 
 ---
 
@@ -173,4 +219,4 @@ Government and PSU analytics
 
 This project demonstrates a professional, API-free reverse geocoding workflow using official Indian government data.
 
-It is designed for correctness, reproducibility, and offline operation.
+It is designed for correctness, transparency, and offline operation.
