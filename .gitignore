@@ -1,0 +1,8 @@
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.geojson
+*.xlsx
+__pycache__/
