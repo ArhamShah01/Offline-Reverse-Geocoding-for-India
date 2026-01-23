@@ -1,10 +1,10 @@
 # Offline Reverse Geocoding for India
 ## Administrative Boundaries, Headquarters & PIN Codes (Fully Offline)
 
-This repository provides a **complete, production-grade offline reverse geocoding pipeline for India**.
-Given latitude and longitude coordinates, the system derives administrative attributes using official Government of India GIS datasets, **without relying on any external APIs or internet access**.
+This repository provides a **fully offline reverse geocoding pipeline for India**.
+Given latitude and longitude coordinates, the system derives administrative attributes using official Government of India GIS datasets, **without using any external APIs or internet services**.
 
-The project is designed for **correctness, transparency, and reproducibility**, making it suitable for academic work, government use, and restricted environments.
+The project is designed for **correctness, transparency, and reproducibility**, and is suitable for academic work, government workflows, and restricted environments.
 
 ---
 
@@ -23,13 +23,13 @@ All outputs are generated locally using spatial joins on authoritative boundary 
 
 ---
 
-## What This Project Does Not Do
+## What This Project Intentionally Does Not Do
 
 - No Google Maps, Mapbox, OpenStreetMap, or other commercial APIs  
 - No online geocoding services  
 - No forced or guessed administrative values  
 
-If an administrative attribute is not defined in the source data, it is intentionally left blank.
+If an administrative attribute is not defined in the source data, it is intentionally left blank or explicitly marked as `DISPUTED`.
 
 ---
 
@@ -41,7 +41,6 @@ If an administrative attribute is not defined in the source data, it is intentio
 https://onlinemaps.surveyofindia.gov.in/Digital_Product_Show.aspx  
 
 Product details:
-
 - Product Code: OVSF/1M/6  
 - Format: Shapefile  
 - Scale: 1:1 Million  
@@ -72,7 +71,8 @@ offline-reverse-geocoding-india/
 ├── SUBDISTRICT_BOUNDARY.*
 ├── STATE_HQ.*
 ├── DISTRICT_HQ.*
-└── All_India_pincode_Boundary.geojson
+├── All_India_pincode_Boundary.geojson
+└── database.xlsx
 ```
 
 All shapefile components (`.shp`, `.shx`, `.dbf`, `.prj`, `.cpg`) must be present in the same directory.
@@ -87,8 +87,9 @@ All shapefile components (`.shp`, `.shx`, `.dbf`, `.prj`, `.cpg`) must be presen
 latitude | longitude
 ```
 
-- Whitespace and text values are automatically cleaned
-- Invalid coordinates are safely ignored
+- Leading and trailing whitespaces are handled automatically  
+- Text values are safely coerced to numeric  
+- Invalid coordinates are ignored  
 
 ---
 
@@ -104,7 +105,7 @@ latitude | longitude | state | district | subdistrict | state_capital | district
 
 ## Spatial Logic Overview
 
-### Polygon-Based Assignment
+### Polygon-Based Administrative Assignment
 
 The following attributes are derived using **polygon containment (`within`)**:
 
@@ -113,56 +114,65 @@ The following attributes are derived using **polygon containment (`within`)**:
 - Subdistrict  
 - PIN Code  
 
-Polygon containment reflects true administrative ownership rather than proximity.
+Polygon containment reflects true administrative ownership rather than geographic proximity.
 
 ---
 
 ### State Capital Assignment
 
 State capitals are assigned by spatially associating capital point locations with state polygons.
-Certain states share a capital city (e.g., Chandigarh for Haryana and Punjab); these cases are handled explicitly to ensure correctness.
+Certain states share a capital city (for example, Chandigarh for Haryana and Punjab); these cases are handled explicitly to ensure correctness.
 
 ---
 
 ### District Headquarters Assignment
 
-District headquarters are assigned **only when administratively defined**.
+District headquarters are assigned **only when administratively defined**:
 
-- District HQ points are spatially linked to district polygons
-- A strict district-to-HQ relationship is applied
-- No distance-based approximation is used
+- District HQ points are spatially linked to district polygons  
+- A strict district-to-HQ relationship is applied  
+- No distance-based approximation is used  
 
 If a district does not have a defined headquarters in the source dataset, the `district_hq` field is left blank.
 
 ---
 
-## Why Some District HQ Values Are Empty
+## Handling of Disputed Regions
 
-Empty `district_hq` values are **expected and correct** in the following cases:
+Some administrative polygons in the Survey of India dataset are explicitly labeled as disputed, for example:
 
-- **New or reorganized districts** that do not exist in the headquarters dataset  
-- **Gramin / Rural districts**, where the HQ is recorded under the parent district name  
-- **Delhi districts**, which do not have separate district headquarters in official administrative data  
-- **Disputed or special administrative regions**  
-- **Source data limitations or naming inconsistencies**
+- `DISPUTED (MADHYA PRADESH & GUJARAT)`  
+- `DISPUTED (MADHYA PRADESH & RAJASTHAN)`  
+- `DISPUTED (RAJATHAN & GUJARAT)`  
+- `DISPUTED (WEST BENGAL , BIHAR & JHARKHAND)`  
 
-The pipeline intentionally avoids guessing or inferring headquarters where no authoritative definition exists.
+For any input point that falls inside such a polygon:
+
+- All administrative columns (`state`, `district`, `subdistrict`, `district_hq`, `state_capital`, `pincode`) are explicitly set to `DISPUTED`  
+- This avoids partial or misleading attribution  
+
+The project includes a dedicated validation file, `disputed_test_points.xlsx`, containing coordinates guaranteed to lie inside each disputed polygon.
+These points are also merged into `sample_latlongs_merged_with_disputed.xlsx` for end-to-end testing.
 
 ---
 
-## Coordinate Handling
+## Why Some District HQ Values Are Empty
 
-- Latitude and longitude values are cleaned to remove whitespace
-- Text values are safely converted to numeric form
-- Invalid coordinates are excluded from spatial operations
+Empty `district_hq` values are **expected and correct** in several cases:
 
-This prevents silent errors caused by spreadsheet formatting issues.
+- **New or reorganized districts** not present in the headquarters dataset  
+- **Gramin / Rural districts**, where HQs are recorded under the parent district name  
+- **Delhi districts**, which do not have separate district headquarters in official administrative data  
+- **Disputed regions**, which are explicitly marked as `DISPUTED`  
+
+The pipeline intentionally avoids guessing or inferring headquarters where no authoritative definition exists.
 
 ---
 
 ## Coordinate Reference System (CRS)
 
 All spatial operations are performed using **EPSG:4326 (Geographic CRS)**.
+
 Distance-based calculations are intentionally avoided, as administrative boundaries are not defined by proximity.
 
 ---
@@ -181,12 +191,13 @@ All components must be present for correct operation.
 
 ---
 
+
 ## Data Quality and Transparency
 
-At the end of execution, the pipeline prints a **data quality summary**, reporting:
+At the end of execution, the pipeline prints a **data quality summary** showing:
 
-- Number of missing values per output column
-- Percentage of missing values relative to total rows
+- Number of missing values per output column  
+- Percentage of missing values relative to total rows  
 
 This provides transparency into data completeness without modifying results.
 
@@ -194,9 +205,9 @@ This provides transparency into data completeness without modifying results.
 
 ## Performance Considerations
 
-- Spatial joins use R-tree indexing
-- Efficient for thousands of input points
-- For very large datasets, chunked processing is recommended
+- Spatial joins use R-tree indexing  
+- Suitable for thousands of points  
+- For very large datasets, chunked processing is recommended  
 
 ---
 
@@ -205,7 +216,7 @@ This provides transparency into data completeness without modifying results.
 - Points lying exactly on administrative boundaries  
 - Newly created districts not present in HQ datasets  
 - Administrative units without officially defined headquarters  
-- Encoding artifacts in source files  
+- Encoding artifacts in source data  
 
 These reflect real-world data limitations rather than software errors.
 
@@ -234,4 +245,4 @@ Users are responsible for complying with Survey of India and data.gov.in policie
 ## Final Notes
 
 This project demonstrates a **fully offline, authoritative reverse geocoding workflow for India**.
-It prioritizes correctness, transparency, and reproducibility over forced completeness.
+It prioritizes administrative correctness, transparency, and reproducibility over forced completeness.
