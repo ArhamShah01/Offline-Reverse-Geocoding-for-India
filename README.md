@@ -1,6 +1,36 @@
 # Offline Reverse Geocoding for India
 ## Administrative Boundaries, Headquarters & PIN Codes (Fully Offline)
 
+> An offline, authoritative reverse geocoding system for India using official Government of India GIS datasets.
+
+---
+
+## Why This Project Exists
+
+Most reverse geocoding solutions fall into one of the following categories:
+
+- **Online APIs** (Google Maps, Mapbox, OpenCage, etc.)  
+  → Require internet access, impose usage limits, and operate as black boxes.
+
+- **Large self-hosted engines** (e.g., Nominatim, Pelias)  
+  → Require heavy infrastructure, complex setup, and are not tailored for
+    India-specific administrative requirements such as district headquarters.
+
+- **Lightweight offline libraries**  
+  → Typically limited to country/state/city lookups and unsuitable for
+    district- or subdistrict-level analysis.
+
+This project was built to address a **specific gap**:
+a **fully offline, India-focused reverse geocoding pipeline** that produces
+administratively correct results using **authoritative Government of India
+datasets**, without heuristics or external services.
+
+To the best of our knowledge, no existing open-source tool provides fully offline
+reverse geocoding for India with reliable district-, subdistrict-, headquarters-,
+and PIN code–level attribution.
+
+---
+
 This repository provides a **fully offline reverse geocoding pipeline for India**.
 Given latitude and longitude coordinates, the system derives administrative attributes using official Government of India GIS datasets, **without using any external APIs or internet services**.
 
@@ -190,7 +220,6 @@ A shapefile consists of multiple files:
 All components must be present for correct operation.
 
 ---
-
 
 ## Data Quality and Transparency
 
